@@ -1,0 +1,11 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  included_files = [
+    "dashboard/**",
+    "server/**",
+    "edge/**",
+    "gateway/**",
+    "agricultural_data.db"
+  ]
