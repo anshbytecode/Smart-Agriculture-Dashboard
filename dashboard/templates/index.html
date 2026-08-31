@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Agriculture - Edge Analytics & LoRa Irrigation Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 glow-emerald">
+                    <i data-lucide="sprout" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Smart Agriculture Edge Dashboard
+                        <span id="badge-hw-mode" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold animate-pulse">
+                            Hardware: PHYSICAL IoT CONNECTED
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Offline-First Edge Analytics & LoRa Sub-GHz Telemetry System</p>
+                </div>
+            </div>
+
+            <!-- Edge Status Indicators & Mode Toggle -->
+            <div class="flex items-center gap-3 flex-wrap justify-end">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="font-medium text-emerald-400">Edge Autonomy: 100% Offline</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300">
+                    <i data-lucide="radio" class="w-4 h-4 text-cyan-400"></i>
+                    <span id="header-lora-freq">LoRa 868.1 MHz (SF7)</span>
+                </div>
+                <button onclick="toggleMockHardwareMode()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 rounded-lg text-xs font-semibold transition-all">
+                    Toggle Mode (Hardware/Sim)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- Top Metrics KPI Cards Grid (6 Cards) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            
+            <!-- KPI 1: Soil Moisture -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Moisture VWC</span>
+                    <div class="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg">
+                        <i data-lucide="droplets" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1">
+                    <span id="kpi-moisture" class="text-2xl font-extrabold text-white">--</span>
+                    <span class="text-xs font-semibold text-slate-400">%</span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400 flex justify-between">
+                    <span>Bounds:</span>
+                    <span class="font-mono text-cyan-400"><span id="lbl-dry-thresh">30</span>% - <span id="lbl-target-thresh">65</span>%</span>
+                </div>
+            </div>
+
+            <!-- KPI 2: Water Valve & Volume -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Water Valve</span>
+                    <div id="kpi-valve-icon-container" class="p-1.5 bg-slate-700 text-slate-400 rounded-lg">
+                        <i data-lucide="waves" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                    <span id="kpi-valve-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-lg bg-slate-700 text-slate-300">
+                        CLOSED
+                    </span>
+                    <span id="kpi-valve-timer" class="text-[11px] font-mono text-slate-400">0s</span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400 flex justify-between">
+                    <span>Delivered:</span>
+                    <span id="lbl-water-liters" class="font-mono text-emerald-400 font-bold">0.0 L</span>
+                </div>
+            </div>
+
+            <!-- KPI 3: Soil Health Score -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Soil Health</span>
+                    <div class="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1">
+                    <span id="kpi-health-score" class="text-2xl font-extrabold text-emerald-400">--</span>
+                    <span class="text-xs text-slate-400">/ 100</span>
+                </div>
+                <div class="mt-1 text-[11px] flex justify-between">
+                    <span id="kpi-health-status" class="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-medium">OPTIMAL</span>
+                    <span id="kpi-depletion-rate" class="text-slate-400 font-mono">0.0%/h</span>
+                </div>
+            </div>
+
+            <!-- KPI 4: Soil Temperature -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Soil Temp</span>
+                    <div class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                        <i data-lucide="thermometer" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1">
+                    <span id="kpi-temp" class="text-2xl font-extrabold text-amber-300">24.5</span>
+                    <span class="text-xs text-slate-400">°C</span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400 flex justify-between">
+                    <span>Humidity:</span>
+                    <span id="kpi-humidity" class="font-mono text-slate-200">60%</span>
+                </div>
+            </div>
+
+            <!-- KPI 5: Soil pH & EC Salinity -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">pH & EC Salinity</span>
+                    <div class="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                        <i data-lucide="flask-conical" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-baseline gap-2">
+                    <span id="kpi-ph" class="text-2xl font-extrabold text-indigo-300">6.8</span>
+                    <span class="text-xs text-slate-400">pH</span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400 flex justify-between">
+                    <span>EC Conductivity:</span>
+                    <span id="kpi-ec" class="font-mono text-indigo-300 font-bold">1.4 mS/cm</span>
+                </div>
+            </div>
+
+            <!-- KPI 6: LoRa RF Link -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-sm hover:border-slate-600 transition-all">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">LoRa Signal</span>
+                    <div class="p-1.5 bg-purple-500/10 text-purple-400 rounded-lg">
+                        <i data-lucide="wifi" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1">
+                    <span id="kpi-lora-rssi" class="text-2xl font-extrabold text-purple-300">--</span>
+                    <span class="text-xs text-slate-400">dBm</span>
+                </div>
+                <div class="mt-1 text-[11px] text-slate-400 flex justify-between">
+                    <span>Airtime: <strong id="kpi-lora-airtime" class="text-purple-300 font-mono">36ms</strong></span>
+                    <span>SNR: <strong id="kpi-lora-snr" class="text-emerald-400 font-mono">9.5dB</strong></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Middle Grid: Chart & Local Actuator Control -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Chart Section (2 cols) -->
+            <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="line-chart" class="w-5 h-5 text-cyan-400"></i>
+                            Real-Time Soil Moisture & Valve State Telemetry
+                        </h2>
+                        <p class="text-xs text-slate-400">Autonomous edge hysteresis control bounds (30% - 65%)</p>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-cyan-400"></span> Moisture %</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Valve ON</span>
+                    </div>
+                </div>
+
+                <div class="relative h-72 w-full">
+                    <canvas id="moistureChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Local Edge Engine & Manual Operator Control (1 col) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                        <i data-lucide="cpu" class="w-5 h-5 text-emerald-400"></i>
+                        Local Edge Decision Engine
+                    </h2>
+                    <p class="text-xs text-slate-400 mb-4">Decides valve actuation locally on RPi without cloud dependency.</p>
+
+                    <!-- Decision Info Box -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+                        <div class="text-xs text-slate-400">
+                            Last Local Decision:
+                            <div id="lbl-last-reason" class="text-sm font-semibold text-emerald-400 mt-1">
+                                System Initialized
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-800 pt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-slate-400 block">Est. Time to Wilting:</span>
+                                <span id="lbl-wilting-time" class="font-mono font-bold text-white">-- hrs</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block">Safety Shutoff Limit:</span>
+                                <span class="font-mono font-bold text-slate-300">Max 10 Mins</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Override Controls -->
+                <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-300">Manual Operator Override</span>
+                        <span id="lbl-override-status" class="text-slate-400">Disabled (Auto)</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-force-open" onclick="toggleValveOverride(true, true)" class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                            <i data-lucide="play" class="w-4 h-4"></i> Force Valve OPEN
+                        </button>
+                        <button id="btn-force-close" onclick="toggleValveOverride(true, false)" class="px-3 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                            <i data-lucide="square" class="w-4 h-4"></i> Force Valve CLOSE
+                        </button>
+                    </div>
+
+                    <button onclick="toggleValveOverride(false, false)" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium transition-all">
+                        Reset to Automatic Edge Control
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- NEW FEATURE 1: Field Plot & Zone Management (Add / Create / Manage Field Plots) -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="map" class="w-5 h-5 text-emerald-400"></i>
+                        Field Plot & Agricultural Zone Manager
+                    </h2>
+                    <p class="text-xs text-slate-400">Add or manage multiple field zones with dedicated crop thresholds</p>
+                </div>
+
+                <!-- Add Zone Modal Trigger Form -->
+                <form onsubmit="submitNewZone(event)" class="flex flex-wrap gap-2 text-xs w-full sm:w-auto">
+                    <input type="text" id="zone-name" placeholder="Zone Name (e.g. Zone 2 - Wheat)" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-sans focus:outline-none focus:border-emerald-500 flex-1 sm:flex-none">
+                    <input type="text" id="zone-crop" placeholder="Crop (e.g. Wheat)" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-sans focus:outline-none focus:border-emerald-500 w-28">
+                    <input type="number" id="zone-dry" placeholder="Dry %" value="28" required class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono w-20">
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all flex items-center gap-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Add Zone
+                    </button>
+                </form>
+            </div>
+
+            <!-- Zones List Cards Grid -->
+            <div id="zones-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center text-slate-500 text-xs">
+                    Loading agricultural field zones...
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW FEATURE 2: Irrigation Schedules & Agronomist Journal (2 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Schedule Manager (Add / Create Irrigation Schedules) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i data-lucide="calendar-clock" class="w-5 h-5 text-indigo-400"></i>
+                            Automated Irrigation Schedules
+                        </h2>
+                        <p class="text-xs text-slate-400">Add or manage timed irrigation routines</p>
+                    </div>
+                </div>
+
+                <!-- Add Schedule Form -->
+                <form onsubmit="submitNewSchedule(event)" class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-3 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="sch-name" placeholder="Schedule Name (e.g. Morning Soak)" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                        <input type="time" id="sch-time" value="06:00" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="sch-duration" placeholder="Duration (Mins)" value="15" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono">
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add Schedule
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Schedules List Container -->
+                <div id="schedules-list-container" class="space-y-2">
+                    <div class="text-xs text-slate-500 text-center p-3 bg-slate-900 rounded-xl border border-slate-700">
+                        Loading schedules...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agronomist Field Inspection Journal (Add / Create Field Notes) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i data-lucide="notebook-pen" class="w-5 h-5 text-amber-400"></i>
+                            Agronomist Field Inspection Journal
+                        </h2>
+                        <p class="text-xs text-slate-400">Record field observations, fertilizer applications, or notes</p>
+                    </div>
+                </div>
+
+                <!-- Add Note Form -->
+                <form onsubmit="submitNewNote(event)" class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-3 text-xs">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="note-author" placeholder="Author" value="Agronomist" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white col-span-1">
+                        <input type="text" id="note-text" placeholder="Observation Note (e.g. Applied organic fertilizer)" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white col-span-2">
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1">
+                        <i data-lucide="pen-tool" class="w-4 h-4"></i> Log Field Note
+                    </button>
+                </form>
+
+                <!-- Field Notes Timeline Container -->
+                <div id="notes-list-container" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <div class="text-xs text-slate-500 text-center p-3 bg-slate-900 rounded-xl border border-slate-700">
+                        Loading field notes...
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- System Configuration & Dynamic Threshold Tuning Panel -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="settings" class="w-5 h-5 text-indigo-400"></i>
+                        Edge Hysteresis Thresholds & LoRa PHY Configuration
+                    </h2>
+                    <p class="text-xs text-slate-400">Dynamically update edge rules and RF parameters</p>
+                </div>
+                <button onclick="applyConfigChanges()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="save" class="w-4 h-4"></i> Apply Config Changes
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-1.5">
+                    <label class="text-slate-300 font-semibold block">Dry Threshold % (Trigger OPEN)</label>
+                    <input type="number" id="cfg-dry-thresh" value="30" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono">
+                    <span class="text-[10px] text-slate-400">Irrigation turns ON below this value</span>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-1.5">
+                    <label class="text-slate-300 font-semibold block">Target Moisture % (Trigger CLOSE)</label>
+                    <input type="number" id="cfg-target-thresh" value="65" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono">
+                    <span class="text-[10px] text-slate-400">Irrigation shuts OFF at this value</span>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-1.5">
+                    <label class="text-slate-300 font-semibold block">Max Valve Runtime (Seconds)</label>
+                    <input type="number" id="cfg-max-runtime" value="600" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono">
+                    <span class="text-[10px] text-slate-400">Safety shutoff timeout</span>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-3.5 space-y-1.5">
+                    <label class="text-slate-300 font-semibold block">LoRa Spreading Factor (SF)</label>
+                    <select id="cfg-lora-sf" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono">
+                        <option value="7" selected>SF7 (Low airtime / Maximum battery)</option>
+                        <option value="8">SF8 (Medium range)</option>
+                        <option value="9">SF9 (Long range)</option>
+                        <option value="10">SF10 (High sensitivity)</option>
+                        <option value="12">SF12 (Maximum range)</option>
+                    </select>
+                    <span class="text-[10px] text-slate-400">Controls RF range vs battery airtime</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Grid: Weather Simulator & LoRa Power Calculator -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Interactive Environment Simulator -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="sliders" class="w-5 h-5 text-amber-400"></i>
+                            Interactive Soil & Weather Simulator
+                        </h2>
+                        <p class="text-xs text-slate-400">Inject synthetic rain, drought spells, or thermal changes</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Rain Control -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-2">
+                        <label class="text-xs font-semibold text-slate-300 flex justify-between">
+                            <span>Simulate Rain Event</span>
+                            <span id="val-rain" class="text-cyan-400 font-mono">0.0 %/s</span>
+                        </label>
+                        <input type="range" id="slider-rain" min="0" max="5" step="0.5" value="0" oninput="updateSimParams()" class="w-full accent-cyan-500">
+                        <div class="flex gap-2">
+                            <button onclick="setRain(0)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs">Clear Sky</button>
+                            <button onclick="setRain(2.5)" class="px-2.5 py-1 bg-cyan-900/50 hover:bg-cyan-800/50 text-cyan-300 rounded text-xs">Heavy Rain</button>
+                        </div>
+                    </div>
+
+                    <!-- Forced Drought / Dry Spell -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-2">
+                        <label class="text-xs font-semibold text-slate-300 flex justify-between">
+                            <span>Set Soil Moisture Level</span>
+                            <span id="val-force-m" class="text-amber-400 font-mono">Current</span>
+                        </label>
+                        <div class="flex gap-2 pt-2">
+                            <button onclick="forceMoisture(20.0)" class="flex-1 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 rounded-lg text-xs font-semibold">
+                                Simulate Drought (20%)
+                            </button>
+                            <button onclick="forceMoisture(75.0)" class="flex-1 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/60 rounded-lg text-xs font-semibold">
+                                Saturated Soil (75%)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LoRa vs Wi-Fi Power Calculator -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="zap" class="w-5 h-5 text-yellow-400"></i>
+                            LoRa vs. Wi-Fi Power Benefit Calculator
+                        </h2>
+                        <p class="text-xs text-slate-400">Mathematical battery longevity model for agricultural deployments</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <label class="text-slate-400 block mb-1">Battery Capacity (mAh)</label>
+                        <input type="number" id="calc-battery" value="2500" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono" onchange="recalculatePower()">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 block mb-1">Report Interval (Minutes)</label>
+                        <input type="number" id="calc-interval" value="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono" onchange="recalculatePower()">
+                    </div>
+                </div>
+
+                <!-- Comparison Output Cards -->
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <!-- LoRa Result -->
+                    <div class="bg-purple-950/40 border border-purple-800/60 rounded-xl p-4 space-y-1">
+                        <div class="text-xs font-bold text-purple-300 flex items-center justify-between">
+                            <span>LoRa (868 MHz)</span>
+                            <span class="px-1.5 py-0.5 bg-purple-500/20 rounded text-[10px]">SF7 / 16B</span>
+                        </div>
+                        <div id="res-lora-years" class="text-2xl font-extrabold text-white">-- Years</div>
+                        <div id="res-lora-daily" class="text-[11px] text-purple-300 font-mono">3.3 Joules / day</div>
+                    </div>
+
+                    <!-- Wi-Fi Result -->
+                    <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-1 opacity-90">
+                        <div class="text-xs font-bold text-slate-400 flex items-center justify-between">
+                            <span>Wi-Fi (802.11b/g/n)</span>
+                            <span class="px-1.5 py-0.5 bg-slate-800 rounded text-[10px]">WPA2 / HTTP</span>
+                        </div>
+                        <div id="res-wifi-years" class="text-2xl font-extrabold text-slate-300">-- Months</div>
+                        <div id="res-wifi-daily" class="text-[11px] text-slate-400 font-mono">203.8 Joules / day</div>
+                    </div>
+                </div>
+
+                <div id="res-multiplier-banner" class="bg-emerald-950/40 border border-emerald-800/50 rounded-lg p-2.5 text-center text-xs font-semibold text-emerald-400">
+                    Calculated Energy Efficiency Factor
+                </div>
+            </div>
+
+        </div>
+
+        <!-- LoRa Packed Binary Payload Inspector -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="binary" class="w-5 h-5 text-purple-400"></i>
+                    LoRa Sub-GHz Binary Packet Byte Inspector
+                </h2>
+                <span class="text-xs text-slate-400 font-mono">16-Byte Ultra-Dense Payload Frame</span>
+            </div>
+
+            <div class="bg-slate-950 rounded-xl p-4 font-mono text-xs overflow-x-auto border border-slate-800 space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <span class="text-slate-500 block mb-1.5">// Raw Byte Payload Representation (16 Bytes):</span>
+                        <div id="lbl-hex-payload" class="text-purple-300 font-bold tracking-widest text-sm bg-purple-950/40 p-3 rounded-lg border border-purple-900/60 flex flex-wrap gap-2">
+                            <span class="px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">A5</span>
+                            <span class="px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">01</span>
+                            <span class="px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">11</span>
+                            <span class="px-1.5 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">AD</span>
+                            <span class="px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded">09</span>
+                            <span class="px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded">92</span>
+                            <span class="px-1.5 py-0.5 bg-indigo-900/50 text-indigo-300 rounded">17</span>
+                            <span class="px-1.5 py-0.5 bg-indigo-900/50 text-indigo-300 rounded">70</span>
+                            <span class="px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded">00</span>
+                            <span class="px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300 rounded">64</span>
+                            <span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded">00</span>
+                            <span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded">00</span>
+                            <span class="px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded">00</span>
+                            <span class="px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded">01</span>
+                            <span class="px-1.5 py-0.5 bg-rose-900/50 text-rose-300 rounded">4B</span>
+                            <span class="px-1.5 py-0.5 bg-rose-900/50 text-rose-300 rounded">8C</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-slate-300 text-[11px]">
+                        <div><span class="text-slate-500">Header/Node:</span> <span class="text-blue-400 font-bold">0xA5 / 0x01</span></div>
+                        <div><span class="text-slate-500">Moisture %:</span> <span class="text-cyan-400 font-bold">45.25%</span></div>
+                        <div><span class="text-slate-500">Temperature:</span> <span class="text-amber-400 font-bold">24.50°C</span></div>
+                        <div><span class="text-slate-500">Humidity:</span> <span class="text-indigo-400 font-bold">60.00%</span></div>
+                        <div><span class="text-slate-500">Airtime ms:</span> <span class="text-emerald-400 font-bold">51.5 ms</span></div>
+                        <div><span class="text-slate-500">CRC Checksum:</span> <span class="text-rose-400 font-bold">VALID (0x4B8C)</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry History Log & CSV Data Export Table -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="database" class="w-5 h-5 text-cyan-400"></i>
+                        Telemetry Database Log & Export
+                    </h2>
+                    <p class="text-xs text-slate-400">Stored records in SQLite edge database</p>
+                </div>
+                <a href="/api/export/csv" download class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export CSV Data
+                </a>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-700">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900 text-slate-400 uppercase font-semibold">
+                        <tr>
+                            <th class="p-3">Time</th>
+                            <th class="p-3">Node</th>
+                            <th class="p-3">Moisture %</th>
+                            <th class="p-3">Temp °C</th>
+                            <th class="p-3">Valve</th>
+                            <th class="p-3">Health</th>
+                            <th class="p-3">RSSI</th>
+                            <th class="p-3">SNR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="telemetry-table-body" class="divide-y divide-slate-800 text-slate-300 font-mono">
+                        <tr>
+                            <td colspan="8" class="p-4 text-center text-slate-500">Loading historical data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-6 py-6 text-center text-xs text-slate-500 border-t border-slate-800 mt-8">
+        Smart Agriculture Soil Moisture Monitoring & Automated Irrigation System &bull; Edge Analytics & LoRa Monitoring
+    </footer>
+
+    <!-- App JavaScript -->
+    <script src="/static/app.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
