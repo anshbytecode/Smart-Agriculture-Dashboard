@@ -4,12 +4,9 @@ A smart agriculture monitoring and irrigation management system built with **Pyt
 
 The system is designed to monitor agricultural conditions, analyze sensor data at the edge, manage irrigation valves, track zones and schedules, and provide real-time information through a web dashboard.
 
-## 🚀 Live Demo
 
 🔗 **Live Dashboard:**  
 https://smart-agriculture-dashboard-s360.onrender.com/
-
-> The application is deployed on Render. Since it uses a free hosting instance, the service may sleep after inactivity and take a little time to wake up when accessed again.
 
 ---
 
