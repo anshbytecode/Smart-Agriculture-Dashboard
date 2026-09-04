@@ -213,8 +213,9 @@ async def startup_event():
 async def serve_dashboard(request: Request):
 
     return templates.TemplateResponse(
-        "index.html",
-        {
+        request=request,
+        name="index.html",
+        context={
             "request": request,
             "config": Config.to_dict()
         }
